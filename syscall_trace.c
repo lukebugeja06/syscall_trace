@@ -82,27 +82,43 @@ static void print_header(void)
     fflush(out_fp);
 }
 
+static void print_event(FILE *out, const struct event *e)
+{
+    const char *name = syscall_name(e->id);
+    __u64 nr = SYSCALL_NR(e->id);
+    double ts_sec = (double)e->ts / 1e9;
+
+    if (name){
+        fprintf(out, "[%14.6f] PID=%-7u TID=%-7u UID=%-6u %-24s %.16s",
+               ts_sec, e->pid, e->tid, e->uid, name, e->comm);
+    }else{
+        fprintf(out, "[%14.6f] PID=%-7u TID=%-7u UID=%-6u %-24llu %.16s",
+               ts_sec, e->pid, e->tid, e->uid, nr, e->comm);
+            
+    }
+
+    if (e->path[0] != '\0'){
+        fprintf(out, " PATH=%s", e->path);
+    }
+    if (e->path2[0] != '\0'){
+        fprintf(out, " PATH=%s", e->path2);
+    }
+
+    fputc('\n', out);
+}
+
 static int handle_event(void *ctx, void *data, size_t size)
 {
     (void)ctx;
     (void)size;
 
     const struct event *e = data;
-    const char *name = syscall_name(e->id);
-    __u64 nr = SYSCALL_NR(e->id);
-    double ts_sec = (double)e->ts / 1e9;
 
-    if (name){
-        fprintf(out_fp, "[%14.6f] PID=%-7u TID=%-7u UID=%-6u %-24s %.16s",
-               ts_sec, e->pid, e->tid, e->uid, name, e->comm);
-    }else{
-        fprintf(out_fp, "[%14.6f] PID=%-7u TID=%-7u UID=%-6u %-24llu %.16s",
-               ts_sec, e->pid, e->tid, e->uid, nr, e->comm);
+    print_event(stdout, e);
+    if (out_fp){
+        print_event(out_fp, e);
     }
-    
-    fprintf(out_fp, " PATH=<%s> PATH2=<%s>", e->path, e->path2);
 
-    fputc('\n', out_fp);
     return 0;
 }
 
